@@ -3,6 +3,8 @@ import pandasql as psql
 from pycaret.regression import *
 import mlflow
 import mlflow.sklearn  # Para modelos de scikit-learn (PyCaret usa scikit-learn internamente)
+import dagshub
+
 
 def entrenamiento(dfData):
   # lista de semanas disponibles
@@ -20,11 +22,11 @@ def entrenamiento(dfData):
   columns_to_drop3 = [col for col in dfData.columns if col.startswith('TASA') and int(col.split('_')[2]) > 12]
   columns_to_drop = columns_to_drop1 + columns_to_drop2 + columns_to_drop3
 
-  print(columns_to_drop)
   dfData = dfData.drop(columns=columns_to_drop)
 
   # Definir el experimento en MLflow
-  mlflow.set_tracking_uri("postgresql://postgres:JUan1006324833@localhost/mlflow_db")
+  dagshub.init(repo_owner='JuanDavid1925', repo_name='Predizer.ai', mlflow=True)
+  mlflow.set_tracking_uri("https://dagshub.com/JuanDavid1925/Predizer.ai.mlflow")
   mlflow.set_experiment("Prediccion_Ventas2")
 
   for historia in [1,2,3,4,5]:
