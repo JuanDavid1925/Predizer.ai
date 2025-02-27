@@ -7,7 +7,7 @@ def get_previous_monday(date):
     """Obtiene el lunes anterior a una fecha dada."""
     return date - datetime.timedelta(days=date.weekday())
 
-def process_data_ventas(dfVentas):
+def process_data_ventas(dfVentas, dfLdP):
     columnas = ['fe_pedi_cli','cd_mode_come','cd_cia','cd_uneg_cont','cd_sucu','cd_marca','cd_line_vehi']
     dfVentas = dfVentas[columnas]
     # COMO VAMOS A AGRUPAR POR SEMANA, OBTENEMOS EL LUNES ANTERIOR A CADA FECHA DE PEDIDO
@@ -21,6 +21,36 @@ def process_data_ventas(dfVentas):
     dfVentas = dfVentas.loc[dfVentas['SEMANA']>='2015-01-01'].copy()
     dfVentas = dfVentas.sort_values(by=['SEMANA', 'cd_mode_come'])
     dfVentas = dfVentas.reset_index(drop=True)
+
+    # obtenemos las semanas desde el 2015
+    distintas_semanas = dfVentas['SEMANA'].unique()
+
+    # para cada semana s
+
+
+    listaAdicionarFilas = []
+
+    for s in distintas_semanas:
+    #   # obtenemos la lista de precios anterior más cercana a s y de esta obtenemos los modelos de dicha lista
+    #   # al convertirla a un set, no deberían haber modelos repetidos
+        modelosEnListaDePrecios = set(fechaMasCercana(s, dfLdP))
+
+    #   # obtenemos los modelos que SI se vendieron en dicha semana s
+    #   # también es un set y por tanto no deben haber modelos repetidos
+        modelosEnVentas = set(dfVentas[dfVentas['SEMANA'] == s]['cd_mode_come'].tolist())
+
+    #   # obtenemos los modelos de la lista que no se vendieron.  
+        modelosACrear = modelosEnListaDePrecios - modelosEnVentas
+
+    #     # para cada modelo encontrado, creamos una fila en df para esa semana s, ese modelo y con valor 0
+        for modelo in modelosACrear:
+
+            fila = (s, modelo, 0)
+            listaAdicionarFilas.append(fila)
+
+    # # adicionamos todas las filas que se encontraron
+    df = pd.DataFrame(listaAdicionarFilas, columns=['SEMANA','cd_mode_come','VENTAS'])
+    dfVentas = pd.concat([dfVentas, df], ignore_index=True)
     
     save_to_feather(dfVentas, './Data Original/dfVentas2.feather')
 
@@ -103,8 +133,8 @@ def process_data_tasas(dfTasas):
 
 
 def process_data_disponibles(dfDisponibles):
-    # dejamos solo filas desde el 2017
-    dfDisponibles = dfDisponibles.loc[dfDisponibles['SEMANA'] >= '2017-01-01'].copy()
+    # dejamos solo filas desde el 2015
+    dfDisponibles = dfDisponibles.loc[dfDisponibles['SEMANA'] >= '2015-01-01'].copy()
 
     return dfDisponibles
 
@@ -130,8 +160,8 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
     dfData['distancia'] = dfData['distancia'].astype(int)
 
     # dejamos solo cuando distancia sea menor a 52
-    dfData = dfData.loc[dfData['distancia']>=0]
-    dfData = dfData.loc[dfData['distancia']<=52]
+    #dfData = dfData.loc[dfData['distancia']>=0]
+    #dfData = dfData.loc[dfData['distancia']<=52]
 
     # dejamos solo las columnas que nos interesan
     dfData = dfData[['SEMANA_x','cd_mode_come','cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x', 'distancia','VENTAS_y','COTIZACIONES_y','TASA_CONSUMO_y','disponibles_y']].copy()
@@ -167,7 +197,7 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
     # Obtener el trimestre
     dfData2['Trimestre'] = dfData2['SEMANA'].dt.quarter
 
-    # OJO dejamos solo filas desde el 2017
+    # OJO dejamos solo filas desde el 2015
     dfData2 = dfData2.loc[dfData2['SEMANA']>='2015-01-01'].copy()
 
     dfData = dfData[['SEMANA',	'cd_mode_come',	'cd_cia',	'cd_uneg_cont',	'cd_marca',	'cd_line_vehi']].copy()
@@ -176,5 +206,7 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
 
     dfData = dfData.drop('VENTAS', axis=1)
 
-    save_to_feather(dfData, "./Data Original/dfData.feather")
+    return dfData
+
+    #save_to_feather(dfData, "./Data Original/dfData.feather")
     

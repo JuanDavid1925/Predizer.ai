@@ -7,9 +7,11 @@ from src.data_processing import process_data_tasas
 from src.data_processing import process_data_disponibles
 from src.data_processing import join
 from src.analysis import entrenamiento
-
+from src.cargarModelo import cargarModelo
+from src.generarArchivoInicialTraining import generar_archivo_inicial_training
 
 def main():
+    '''
     dfVentas = load_data("Data Original/ventas.feather")
     dfLdP = load_data("Data Original/dfLdP.feather")
     dfCotizaciones = load_data("Data Original/cotizaciones.feather")
@@ -17,19 +19,21 @@ def main():
     dfDisponibles = load_data("Data Original/dfDisponibles.feather")
 
 
-    dfVentas = process_data_ventas(dfVentas)
     dfLdP = process_data_precios(dfLdP)
+    dfVentas = process_data_ventas(dfVentas, dfLdP)
     dfCotizaciones = process_data_cotizaciones(dfCotizaciones)
     dfTasas = process_data_tasas(dfTasas)
     dfDisponibles = process_data_disponibles(dfDisponibles)
 
     join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles)
 
-
     dfData = load_data("Data Original/dfData.feather")
+    
+    #entrenamiento(dfData, 12, 12, 12, 5, 4, '2024-11-01')
 
-    entrenamiento(dfData)
-
-
+    #print(cargarModelo(dfData, '2024-11-01', 4))
+    '''
+    generar_archivo_inicial_training(4, 12, 12, 12, 12,'2024-07-01')
+    
 if __name__ == "__main__":
     main()
