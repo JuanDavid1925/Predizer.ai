@@ -1,5 +1,4 @@
 import pandas as pd
-import pandasql as psql
 
 def load_data(feather_path):
   """Carga los datos desde un archivo Feather."""

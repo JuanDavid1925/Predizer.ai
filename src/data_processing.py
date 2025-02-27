@@ -1,6 +1,6 @@
 import datetime
 import pandas as pd
-import pandasql as psql
+
 from src.data_loader import save_to_feather
 
 def get_previous_monday(date):

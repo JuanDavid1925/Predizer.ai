@@ -1,5 +1,4 @@
 import pandas as pd
-import pandasql as psql
 from pycaret.regression import *
 import mlflow
 import mlflow.sklearn  # Para modelos de scikit-learn (PyCaret usa scikit-learn internamente)
