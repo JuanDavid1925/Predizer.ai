@@ -33,7 +33,13 @@ def main():
 
     #print(cargarModelo(dfData, '2024-11-01', 4))
     '''
-    generar_archivo_inicial_training(4, 12, 12, 12, 12,'2024-07-01')
+    generar_archivo_inicial_training(horizonte=4, 
+                                     historia_ventas=12, 
+                                     historia_cotizaciones=12, 
+                                     historia_tasas=12, 
+                                     historia_disponibles=12,
+                                     fechaInicioTraining='2015-01-01'
+                                     fechaDeCorte = '2024-07-01')  # YYYY-DD-MM, es la fecha que señala el final de trainig y el inicio de test
     
 if __name__ == "__main__":
     main()

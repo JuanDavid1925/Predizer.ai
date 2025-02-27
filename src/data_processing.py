@@ -141,6 +141,7 @@ def process_data_disponibles(dfDisponibles):
 
 
 def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
+    #TODO:  de dfVentas solo usar las columnas semana y cd_mode_come, ventas
     dfData = dfVentas.merge(dfCotizaciones, on=['SEMANA','cd_mode_come'], how='left')
     dfData.fillna(0, inplace=True)
 
@@ -164,6 +165,7 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
     #dfData = dfData.loc[dfData['distancia']<=52]
 
     # dejamos solo las columnas que nos interesan
+    # TODO: quitar 'cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x
     dfData = dfData[['SEMANA_x','cd_mode_come','cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x', 'distancia','VENTAS_y','COTIZACIONES_y','TASA_CONSUMO_y','disponibles_y']].copy()
     dfData.columns=['SEMANA','cd_mode_come','cd_cia','cd_uneg_cont','cd_marca','cd_line_vehi','distancia','VENTAS','COTIZACIONES','TASA_CONSUMO','DISPONIBLES']
 
@@ -200,8 +202,10 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
     # OJO dejamos solo filas desde el 2015
     dfData2 = dfData2.loc[dfData2['SEMANA']>='2015-01-01'].copy()
 
+    #TODO:  LAS COLYMNAS A ADICIONAR VIENEN COMO PARÁMETRO y cambiar dfData por dfVentas y poir tanto la siguiente fila sobra
     dfData = dfData[['SEMANA',	'cd_mode_come',	'cd_cia',	'cd_uneg_cont',	'cd_marca',	'cd_line_vehi']].copy()
 
+    #TODO:  indicar de dfVentas qué columnas usar:  'cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x viene en el parámetro
     dfData = dfData2.merge(dfVentas , on=['SEMANA','cd_mode_come'], how='inner')
 
     dfData = dfData.drop('VENTAS', axis=1)
