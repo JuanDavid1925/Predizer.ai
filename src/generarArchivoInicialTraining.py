@@ -66,8 +66,6 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
     print('va a join...')
     dfData = join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, columnasAdicionales)
 
-    print("COLUMNAS EN DFDATA ANTES DE ELIMINAR: " , dfData.columns)
-
 
     # Procesar las columnas de acuerdo al horizonte y la historia
     for i in range(1, horizonte):
