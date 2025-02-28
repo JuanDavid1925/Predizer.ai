@@ -1,45 +1,18 @@
-from src.data_loader import load_data
-from src.data_loader import load_data_tasas
-from src.data_processing import process_data_ventas
-from src.data_processing import process_data_precios
-from src.data_processing import process_data_cotizaciones
-from src.data_processing import process_data_tasas
-from src.data_processing import process_data_disponibles
-from src.data_processing import join
-from src.analysis import entrenamiento
-from src.cargarModelo import cargarModelo
 from src.generarArchivoInicialTraining import generar_archivo_inicial_training
+from src.entrenarModelosPyCaret import entrenar_modelo
 
 def main():
-    '''
-    dfVentas = load_data("Data Original/ventas.feather")
-    dfLdP = load_data("Data Original/dfLdP.feather")
-    dfCotizaciones = load_data("Data Original/cotizaciones.feather")
-    dfTasas = load_data_tasas("Data Original/BANREP Historico tasas de interes creditos.xlsx")
-    dfDisponibles = load_data("Data Original/dfDisponibles.feather")
-
-
-    dfLdP = process_data_precios(dfLdP)
-    dfVentas = process_data_ventas(dfVentas, dfLdP)
-    dfCotizaciones = process_data_cotizaciones(dfCotizaciones)
-    dfTasas = process_data_tasas(dfTasas)
-    dfDisponibles = process_data_disponibles(dfDisponibles)
-
-    join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles)
-
-    dfData = load_data("Data Original/dfData.feather")
     
-    #entrenamiento(dfData, 12, 12, 12, 5, 4, '2024-11-01')
-
-    #print(cargarModelo(dfData, '2024-11-01', 4))
-    '''
     generar_archivo_inicial_training(horizonte=4, 
                                      historia_ventas=12, 
                                      historia_cotizaciones=12, 
                                      historia_tasas=12, 
                                      historia_disponibles=12,
-                                     fechaInicioTraining='2015-01-01'
-                                     fechaDeCorte = '2024-07-01')  # YYYY-DD-MM, es la fecha que señala el final de trainig y el inicio de test
+                                     fechaInicioTraining='2015-01-01',
+                                     fechaDeCorte = '2024-07-01',  # YYYY-DD-MM, es la fecha que señala el final de trainig y el inicio de test
+                                     columnasAdicionales= ['cd_cia', 'cd_uneg_cont', 'cd_marca', 'cd_line_vehi']) 
+    
+    entrenar_modelo(idData = 1)
     
 if __name__ == "__main__":
     main()

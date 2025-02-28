@@ -6,16 +6,33 @@ from src.data_processing import process_data_cotizaciones
 from src.data_processing import process_data_tasas
 from src.data_processing import process_data_disponibles
 from src.data_processing import join
+from datetime import datetime
+import os
 
 #TODO:  falta parametro de inicio de trining
 #TODO:  incluir un parámetro con un texto que indique las columnas adicionales a incluir:  'cd_uneg_cont','cd_sucu','cd_marca','cd_line_vehi'
 
-def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotizaciones, historia_tasas, historia_disponibles, fechaDeCorte):
+def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotizaciones, historia_tasas, historia_disponibles, fechaDeCorte, fechaInicioTraining, columnasAdicionales):
     """
     Genera un archivo dfData listo para el entrenamiento y un Excel con los parámetros de entrada.
     """
 
     fechaDeCorte = pd.to_datetime(fechaDeCorte)
+    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Definir ruta del archivo de parámetros
+    ruta_parametros = 'Data Training/ParametrosEntrenamiento.xlsx'
+
+    print("Va a leer parametros de entrenamiento...")
+    # Verificar si el archivo de parámetros existe
+    if os.path.exists(ruta_parametros):
+        dfParametros = pd.read_excel(ruta_parametros)
+        idMaximo = dfParametros['nombreArchivo'].max() + 1
+    else:
+        dfParametros = pd.DataFrame(columns=['nombreArchivo', 'fechaDeCreacion', 'horizonte', 'historia_ventas', 'historia_cotizaciones', 'historia_tasas', 'historia_disponibles', 'fechaInicioTraining','fechaDeCorte', 'columnasAdicionales'])
+        idMaximo = 1
+
+    nombre_archivo = f"Data Training/dfData_{idMaximo}.feather"
 
     # Cargar los datos originales
     print('iniciando...')
@@ -31,7 +48,7 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
 
     # Calcular ventas por semana por modelo
     print('va a process_data_ventas...')
-    dfVentas = process_data_ventas(dfVentas, dfLdP)
+    dfVentas = process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, columnasAdicionales)
 
     # Calcular cotizaciones por semana por modelo
     print('va a process_data_cotizaciones...')
@@ -43,18 +60,20 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
 
     # Calcular disponibles por semana por modelo
     print('va a process_data_disponibles...')
-    dfDisponibles = process_data_disponibles(dfDisponibles)
+    dfDisponibles = process_data_disponibles(dfDisponibles, fechaInicioTraining)
 
     # Hacer el join de los DataFrames
     print('va a join...')
-    dfData = join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles)
+    dfData = join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, columnasAdicionales)
+
+    print("COLUMNAS EN DFDATA ANTES DE ELIMINAR: " , dfData.columns)
 
 
     # Procesar las columnas de acuerdo al horizonte y la historia
-    for i in range(0, horizonte):
-        col_ventas = f'VENTAS_{i + 1}'
+    for i in range(1, horizonte):
+        col_ventas = f'VENTAS_{i}'
         col_cotizaciones = f'COTIZACIONES_{i}'
-        col_tasas = f'TASAS_{i}'
+        col_tasas = f'TASA_CONSUMO_{i}'
         col_disponibles = f'DISPONIBLES_{i}'
         
         if col_ventas in dfData.columns:
@@ -69,7 +88,7 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
     
     columnas_existentes = dfData.columns.tolist()
 
-     # Mantener solo hasta la historia definida, verificando que las columnas existen
+    # Mantener solo hasta la historia definida, verificando que las columnas existen
     cols_historia_ventas = [f'VENTAS_{i}' for i in range(historia_ventas + 1) if f'VENTAS_{i}' in columnas_existentes]
     cols_historia_cotizaciones = [f'COTIZACIONES_{i}' for i in range(historia_cotizaciones + 1) if f'COTIZACIONES_{i}' in columnas_existentes]
     cols_historia_tasas = [f'TASAS_{i}' for i in range(historia_tasas + 1) if f'TASAS_{i}' in columnas_existentes]
@@ -78,31 +97,28 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
     columnas_finales = ['SEMANA', 'cd_mode_come'] + cols_historia_ventas + cols_historia_cotizaciones + cols_historia_tasas + cols_historia_disponibles
     dfData = dfData[columnas_finales]
 
-    print("COLUMNAS EN DFDATA:" , dfData.columns)
+    print("COLUMNAS EN DFDATA DESPUES DE ELIMINAR:" , dfData.columns)
     
     # Guardar el archivo en formato Feather
-    save_to_feather(dfData, 'Data Original/dfData.feather')
+    save_to_feather(dfData, nombre_archivo)
 
-    #TODO:  vamos a ejecutar esto muchas veces.  cada vez va a generar un archivo.
-    # paso 1:  lee el dataframe parametrosentrenamiento.
-    # paso 2:  mirar cuál es la ultima fila y obtienes el siguiente id (idMaximo)
-    # paso 3:  insertar una nueva fila con los parametro y creas un archivo nuevo CON OTRO NOMBRE idMaximo
-    
-    # Guardar los parámetros en un archivo Excel
-    parametros = {
-        #TODO:  nombreArchivo:33.xlsx
-        #TODO:  fecha y hora de hoy
+    # Agregar nueva fila de parámetros
+    nueva_fila = pd.DataFrame({
+        'nombreArchivo': [idMaximo],
+        'fechaDecreacion': [fecha_actual],
         'horizonte': [horizonte],
         'historia_ventas': [historia_ventas],
         'historia_cotizaciones': [historia_cotizaciones],
         'historia_tasas': [historia_tasas],
         'historia_disponibles': [historia_disponibles],
-        'fechaDeCorte': [fechaDeCorte]
-    }
-    #TODO: reemplazar 
-    dfParametros = pd.DataFrame(parametros)
-    dfParametros.to_excel('Data Training/ParametrosEntrenamiento.xlsx', index=False)
+        'fechaInicioTraining': [fechaInicioTraining],
+        'fechaDeCorte': [fechaDeCorte],
+        'columnasAdicionales' : [columnasAdicionales]
+    })
+
+    dfParametros = pd.concat([dfParametros, nueva_fila], ignore_index=True)
+    dfParametros.to_excel(ruta_parametros, index=False)
     
-    print("✅ Archivo dfData.feather y ParametrosEntrenamiento.xlsx generados correctamente.")
+    print(f"✅ Archivo {nombre_archivo} generado y registrado en {ruta_parametros} correctamente.")
 
 

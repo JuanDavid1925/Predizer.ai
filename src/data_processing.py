@@ -7,8 +7,8 @@ def get_previous_monday(date):
     """Obtiene el lunes anterior a una fecha dada."""
     return date - datetime.timedelta(days=date.weekday())
 
-def process_data_ventas(dfVentas, dfLdP):
-    columnas = ['fe_pedi_cli','cd_mode_come','cd_cia','cd_uneg_cont','cd_sucu','cd_marca','cd_line_vehi']
+def process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, columnasAdicionales):
+    columnas = ['fe_pedi_cli', 'cd_mode_come'] + columnasAdicionales
     dfVentas = dfVentas[columnas]
     # COMO VAMOS A AGRUPAR POR SEMANA, OBTENEMOS EL LUNES ANTERIOR A CADA FECHA DE PEDIDO
     dfVentas['SEMANA'] = dfVentas['fe_pedi_cli'].apply(get_previous_monday)
@@ -17,8 +17,8 @@ def process_data_ventas(dfVentas, dfLdP):
     dfVentas = dfVentas.drop(columns=['fe_pedi_cli'])
 
     # AGRUPAMIENTO POR SEMANA:  obtenemos las ventas por SEMANA y MODELO (cd_mode_come)
-    dfVentas = dfVentas.groupby(['SEMANA', 'cd_mode_come','cd_cia','cd_uneg_cont','cd_marca','cd_line_vehi']).agg(VENTAS=('cd_mode_come', 'count')).reset_index()
-    dfVentas = dfVentas.loc[dfVentas['SEMANA']>='2015-01-01'].copy()
+    dfVentas = dfVentas.groupby(['SEMANA', 'cd_mode_come'] + columnasAdicionales).agg(VENTAS=('cd_mode_come', 'count')).reset_index()
+    dfVentas = dfVentas.loc[dfVentas['SEMANA']>= fechaInicioTraining].copy()
     dfVentas = dfVentas.sort_values(by=['SEMANA', 'cd_mode_come'])
     dfVentas = dfVentas.reset_index(drop=True)
 
@@ -132,15 +132,15 @@ def process_data_tasas(dfTasas):
     return dfTasas
 
 
-def process_data_disponibles(dfDisponibles):
+def process_data_disponibles(dfDisponibles,fechaInicioTraining):
     # dejamos solo filas desde el 2015
-    dfDisponibles = dfDisponibles.loc[dfDisponibles['SEMANA'] >= '2015-01-01'].copy()
+    dfDisponibles = dfDisponibles.loc[dfDisponibles['SEMANA'] >= fechaInicioTraining].copy()
 
     return dfDisponibles
 
 
 
-def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
+def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, columnasAdicionales):
     #TODO:  de dfVentas solo usar las columnas semana y cd_mode_come, ventas
     dfData = dfVentas.merge(dfCotizaciones, on=['SEMANA','cd_mode_come'], how='left')
     dfData.fillna(0, inplace=True)
@@ -166,8 +166,8 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
 
     # dejamos solo las columnas que nos interesan
     # TODO: quitar 'cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x
-    dfData = dfData[['SEMANA_x','cd_mode_come','cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x', 'distancia','VENTAS_y','COTIZACIONES_y','TASA_CONSUMO_y','disponibles_y']].copy()
-    dfData.columns=['SEMANA','cd_mode_come','cd_cia','cd_uneg_cont','cd_marca','cd_line_vehi','distancia','VENTAS','COTIZACIONES','TASA_CONSUMO','DISPONIBLES']
+    dfData = dfData[['SEMANA_x','cd_mode_come', 'distancia','VENTAS_y','COTIZACIONES_y','TASA_CONSUMO_y','disponibles_y']].copy()
+    dfData.columns=['SEMANA','cd_mode_come','distancia','VENTAS','COTIZACIONES','TASA_CONSUMO','DISPONIBLES']
 
     # dejamos en dfData2 lo único que requerimos para el pivot
     dfData2 = dfData[['SEMANA', 'cd_mode_come', 'distancia', 'VENTAS', 'COTIZACIONES','TASA_CONSUMO','DISPONIBLES']].copy()
@@ -200,10 +200,9 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
     dfData2['Trimestre'] = dfData2['SEMANA'].dt.quarter
 
     # OJO dejamos solo filas desde el 2015
-    dfData2 = dfData2.loc[dfData2['SEMANA']>='2015-01-01'].copy()
+    dfData2 = dfData2.loc[dfData2['SEMANA']>= fechaInicioTraining].copy()
 
-    #TODO:  LAS COLYMNAS A ADICIONAR VIENEN COMO PARÁMETRO y cambiar dfData por dfVentas y poir tanto la siguiente fila sobra
-    dfData = dfData[['SEMANA',	'cd_mode_come',	'cd_cia',	'cd_uneg_cont',	'cd_marca',	'cd_line_vehi']].copy()
+    
 
     #TODO:  indicar de dfVentas qué columnas usar:  'cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x viene en el parámetro
     dfData = dfData2.merge(dfVentas , on=['SEMANA','cd_mode_come'], how='inner')
@@ -212,5 +211,5 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles):
 
     return dfData
 
-    #save_to_feather(dfData, "./Data Original/dfData.feather")
+    
     
