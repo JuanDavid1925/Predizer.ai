@@ -4,3 +4,4 @@ __pycache__/
 *.xlsx
 Data Original/*.feather
 Data Training/*.feather
+Data Predictions/*.feather
