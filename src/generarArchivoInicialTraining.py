@@ -9,15 +9,12 @@ from src.data_processing import join
 from datetime import datetime
 import os
 
-#TODO:  falta parametro de inicio de trining
-#TODO:  incluir un parámetro con un texto que indique las columnas adicionales a incluir:  'cd_uneg_cont','cd_sucu','cd_marca','cd_line_vehi'
 
-def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotizaciones, historia_tasas, historia_disponibles, fechaDeCorte, fechaInicioTraining, columnasAdicionales):
+def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotizaciones, historia_tasas, historia_disponibles,  fechaInicioTraining, fechaFinalTraining, columnasAdicionales):
     """
     Genera un archivo dfData listo para el entrenamiento y un Excel con los parámetros de entrada.
     """
 
-    fechaDeCorte = pd.to_datetime(fechaDeCorte)
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Definir ruta del archivo de parámetros
@@ -29,11 +26,12 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
         dfParametros = pd.read_excel(ruta_parametros)
         idMaximo = dfParametros['nombreArchivo'].max() + 1
     else:
-        dfParametros = pd.DataFrame(columns=['nombreArchivo', 'fechaDeCreacion', 'horizonte', 'historia_ventas', 'historia_cotizaciones', 'historia_tasas', 'historia_disponibles', 'fechaInicioTraining','fechaDeCorte', 'columnasAdicionales'])
+        dfParametros = pd.DataFrame(columns=['nombreArchivo', 'fechaDeCreacion', 'horizonte', 'historia_ventas', 'historia_cotizaciones', 'historia_tasas', 'historia_disponibles', 'fechaInicioTraining','fechaFinalTraining', 'columnasAdicionales'])
         idMaximo = 1
 
     nombre_archivo = f"Data Training/dfData_{idMaximo}.feather"
-
+    
+    
     # Cargar los datos originales
     print('iniciando...')
     dfVentas = load_data("Data Original/ventas.feather")
@@ -43,28 +41,38 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
     dfDisponibles = load_data("Data Original/dfDisponibles.feather")
     
 
+    '''
+    # Cargar los datos originales
+    print('iniciando...')
+    dfVentas = load_data("Data Original/ventas 2024 12 10.xlsx")
+    dfLdP = load_data("Data Original/listaPrecios.xlsx")
+    dfCotizaciones = load_data("Data Original/cotizaciones.xlsx")
+    dfTasas = load_data_tasas("Data Original/BANREP Historico tasas de interes creditos.xlsx")
+    dfDisponibles = load_data("Data Original/dfHistoricoPedidos2.csv")
+    '''
+
     print('va a process_data_precios...')
     dfLdP = process_data_precios(dfLdP)
 
     # Calcular ventas por semana por modelo
     print('va a process_data_ventas...')
-    dfVentas = process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, columnasAdicionales)
+    dfVentas = process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, fechaFinalTraining,columnasAdicionales)
 
     # Calcular cotizaciones por semana por modelo
     print('va a process_data_cotizaciones...')
-    dfCotizaciones = process_data_cotizaciones(dfCotizaciones)
+    dfCotizaciones = process_data_cotizaciones(dfCotizaciones, fechaInicioTraining, fechaFinalTraining)
 
     # Calcular tasas por semana
     print('va a process_data_tasas...')
-    dfTasas = process_data_tasas(dfTasas)
+    dfTasas = process_data_tasas(dfTasas, fechaInicioTraining, fechaFinalTraining)
 
     # Calcular disponibles por semana por modelo
     print('va a process_data_disponibles...')
-    dfDisponibles = process_data_disponibles(dfDisponibles, fechaInicioTraining)
+    dfDisponibles = process_data_disponibles(dfDisponibles, fechaInicioTraining, fechaFinalTraining)
 
     # Hacer el join de los DataFrames
     print('va a join...')
-    dfData = join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, columnasAdicionales)
+    dfData = join(dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, fechaFinalTraining)
 
 
     # Procesar las columnas de acuerdo al horizonte y la historia
@@ -89,7 +97,7 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
     # Mantener solo hasta la historia definida, verificando que las columnas existen
     cols_historia_ventas = [f'VENTAS_{i}' for i in range(historia_ventas + 1) if f'VENTAS_{i}' in columnas_existentes]
     cols_historia_cotizaciones = [f'COTIZACIONES_{i}' for i in range(historia_cotizaciones + 1) if f'COTIZACIONES_{i}' in columnas_existentes]
-    cols_historia_tasas = [f'TASAS_{i}' for i in range(historia_tasas + 1) if f'TASAS_{i}' in columnas_existentes]
+    cols_historia_tasas = [f'TASA_CONSUMO{i}' for i in range(historia_tasas + 1) if f'TASA_CONSUMO{i}' in columnas_existentes]
     cols_historia_disponibles = [f'DISPONIBLES_{i}' for i in range(historia_disponibles + 1) if f'DISPONIBLES_{i}' in columnas_existentes]
     
     columnas_finales = ['SEMANA', 'cd_mode_come'] + cols_historia_ventas + cols_historia_cotizaciones + cols_historia_tasas + cols_historia_disponibles
@@ -110,7 +118,7 @@ def generar_archivo_inicial_training(horizonte, historia_ventas, historia_cotiza
         'historia_tasas': [historia_tasas],
         'historia_disponibles': [historia_disponibles],
         'fechaInicioTraining': [fechaInicioTraining],
-        'fechaDeCorte': [fechaDeCorte],
+        'fechaFinalTraining': [fechaFinalTraining],
         'columnasAdicionales' : [columnasAdicionales]
     })
 

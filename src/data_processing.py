@@ -7,7 +7,7 @@ def get_previous_monday(date):
     """Obtiene el lunes anterior a una fecha dada."""
     return date - datetime.timedelta(days=date.weekday())
 
-def process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, columnasAdicionales):
+def process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, fechaFinalTraining, columnasAdicionales):
     columnas = ['fe_pedi_cli', 'cd_mode_come'] + columnasAdicionales
     dfVentas = dfVentas[columnas]
     # COMO VAMOS A AGRUPAR POR SEMANA, OBTENEMOS EL LUNES ANTERIOR A CADA FECHA DE PEDIDO
@@ -18,7 +18,7 @@ def process_data_ventas(dfVentas, dfLdP, fechaInicioTraining, columnasAdicionale
 
     # AGRUPAMIENTO POR SEMANA:  obtenemos las ventas por SEMANA y MODELO (cd_mode_come)
     dfVentas = dfVentas.groupby(['SEMANA', 'cd_mode_come'] + columnasAdicionales).agg(VENTAS=('cd_mode_come', 'count')).reset_index()
-    dfVentas = dfVentas.loc[dfVentas['SEMANA']>= fechaInicioTraining].copy()
+    dfVentas = dfVentas.loc[(dfVentas['SEMANA']>= fechaInicioTraining) & (dfVentas['SEMANA'] <= fechaFinalTraining)].copy()
     dfVentas = dfVentas.sort_values(by=['SEMANA', 'cd_mode_come'])
     dfVentas = dfVentas.reset_index(drop=True)
 
@@ -83,7 +83,7 @@ def fechaMasCercana(SEMANA, dfLdP):
         return []
     
 
-def process_data_cotizaciones(dfCotizaciones):
+def process_data_cotizaciones(dfCotizaciones, fechaInicioTraining, fechaFinalTraining):
     # dejamos solo las columnas que nos interesan
     # columnas = ['fe_grab_pros','cd_cia','cd_uneg_cont','cd_sucu','cd_cope','cd_marca','cd_line_vehi','cd_mode_come']
     columnas = ['fe_grab_pros','cd_mode_come']
@@ -101,13 +101,16 @@ def process_data_cotizaciones(dfCotizaciones):
     # obtenemos las Cotizaciones por SEMANA y MODELO (cd_mode_come)
     dfCotizaciones = dfCotizaciones.groupby(['SEMANA', 'cd_mode_come']).agg(COTIZACIONES=('cd_mode_come', 'count')).reset_index()
 
+    # Filtrar por fechas
+    dfCotizaciones = dfCotizaciones[(dfCotizaciones['SEMANA'] >= fechaInicioTraining) & (dfCotizaciones['SEMANA'] <= fechaFinalTraining)].copy()
+
     # ordenamos por modelo y semana
     dfCotizaciones = dfCotizaciones.sort_values(by=['cd_mode_come','SEMANA'])
 
     return dfCotizaciones
 
 
-def process_data_tasas(dfTasas):
+def process_data_tasas(dfTasas, fechaInicioTraining, fechaFinalTraining):
     dfTasas.columns = ['periodo','banrep_colocacion','colocacion','consumo','ordinarios','comercial','tesoreria']
 
     # MES tiene el primer día del mes.
@@ -119,12 +122,15 @@ def process_data_tasas(dfTasas):
     # RENOMBRAMOS para que nos quede todo bien
     dfTasas.rename(columns={'consumo': 'TASA_CONSUMO'}, inplace=True)
 
+    # Filtrar por fechas
+    dfTasas = dfTasas[(dfTasas['SEMANA'] >= fechaInicioTraining) & (dfTasas['SEMANA'] <= fechaFinalTraining)].copy()
+
     # asegurarnos que está ordenado
     dfTasas = dfTasas.sort_values(by='SEMANA')
 
     # # creamos las 12 columnas anteriores
-    # for i in range(1, 13):
-    #     dfTasas[f'TASA_CONSUMO_{i}'] = dfTasas['TASA_CONSUMO'].shift(i)
+    for i in range(1, 13):
+        dfTasas[f'TASA_CONSUMO_{i}'] = dfTasas['TASA_CONSUMO'].shift(i)
 
     # eliminamos filas en donde haya nulos
     dfTasas = dfTasas.dropna()
@@ -132,16 +138,16 @@ def process_data_tasas(dfTasas):
     return dfTasas
 
 
-def process_data_disponibles(dfDisponibles,fechaInicioTraining):
-    # dejamos solo filas desde el 2015
-    dfDisponibles = dfDisponibles.loc[dfDisponibles['SEMANA'] >= fechaInicioTraining].copy()
+def process_data_disponibles(dfDisponibles,fechaInicioTraining, fechaFinalTraining):
+    # Filtrar por fechas
+    dfDisponibles = dfDisponibles.loc[(dfDisponibles['SEMANA'] >= fechaInicioTraining) & (dfDisponibles['SEMANA'] <= fechaFinalTraining)].copy()
 
     return dfDisponibles
 
 
 
-def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, columnasAdicionales):
-    #TODO:  de dfVentas solo usar las columnas semana y cd_mode_come, ventas
+def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining, fechaFinalTraining):
+    
     dfData = dfVentas.merge(dfCotizaciones, on=['SEMANA','cd_mode_come'], how='left')
     dfData.fillna(0, inplace=True)
 
@@ -164,8 +170,6 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining,
     #dfData = dfData.loc[dfData['distancia']>=0]
     #dfData = dfData.loc[dfData['distancia']<=52]
 
-    # dejamos solo las columnas que nos interesan
-    # TODO: quitar 'cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x
     dfData = dfData[['SEMANA_x','cd_mode_come', 'distancia','VENTAS_y','COTIZACIONES_y','TASA_CONSUMO_y','disponibles_y']].copy()
     dfData.columns=['SEMANA','cd_mode_come','distancia','VENTAS','COTIZACIONES','TASA_CONSUMO','DISPONIBLES']
 
@@ -199,12 +203,8 @@ def join (dfVentas, dfCotizaciones, dfTasas, dfDisponibles, fechaInicioTraining,
     # Obtener el trimestre
     dfData2['Trimestre'] = dfData2['SEMANA'].dt.quarter
 
-    # OJO dejamos solo filas desde el 2015
-    dfData2 = dfData2.loc[dfData2['SEMANA']>= fechaInicioTraining].copy()
+    dfData2 = dfData2.loc[(dfData2['SEMANA']>= fechaInicioTraining) & (dfData2['SEMANA'] <= fechaFinalTraining)].copy()
 
-    
-
-    #TODO:  indicar de dfVentas qué columnas usar:  'cd_cia_x',	'cd_uneg_cont_x',	'cd_marca_x',	'cd_line_vehi_x viene en el parámetro
     dfData = dfData2.merge(dfVentas , on=['SEMANA','cd_mode_come'], how='inner')
 
     dfData = dfData.drop('VENTAS', axis=1)

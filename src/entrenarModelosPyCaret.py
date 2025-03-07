@@ -18,7 +18,6 @@ def entrenar_modelo(idData):
   if dfData is None or dfData.empty:
         raise ValueError(f"El archivo {ruta_df} no existe o está vacío.")
 
-
   # Cargar el DataFrame de parámetros de entrenamiento
   ruta_parametros = "Data Training/ParametrosEntrenamiento.xlsx"
   dfParametros = pd.read_excel(ruta_parametros)
@@ -28,17 +27,8 @@ def entrenar_modelo(idData):
   if parametros.empty:
       raise ValueError(f"No se encontraron parámetros para el ID {idData} en ParametrosEntrenamiento.")
     
-  fechaHistoria = pd.to_datetime(parametros['fechaInicioTraining'].values[0])
-  fechaBase = pd.to_datetime(parametros['fechaDeCorte'].values[0])
-
-  # Formar dfTrain con las fechas obtenidas
-  dfTrain = dfData[(dfData['SEMANA'] >= fechaHistoria) & (dfData['SEMANA'] <= fechaBase)].copy()
-
-  if dfTrain.empty:
-        raise ValueError("El conjunto de entrenamiento (dfTrain) está vacío después del filtrado.")
-
   # eliminamos semana
-  dfTrain = dfTrain.drop(columns=['SEMANA'])
+  dfData = dfData.drop(columns=['SEMANA'])
 
   # Configurar experimento en MLflow
   dagshub.init(repo_owner='JuanDavid1925', repo_name='Predizer.ai', mlflow=True)
@@ -51,8 +41,8 @@ def entrenar_modelo(idData):
             mlflow.log_param(col, parametros[col].values[0])
 
         # Configurar PyCaret
-        regression_setup = setup(data=dfTrain, target='VENTAS_0', session_id=123)
-        
+        regression_setup = setup(data=dfData, target='VENTAS_0', session_id=123)
+
         # Comparar y seleccionar el mejor modelo
         best_model = compare_models()
         best_model_name = str(best_model)
@@ -77,5 +67,5 @@ def entrenar_modelo(idData):
         model_uri = f"runs:/{mlflow.active_run().info.run_id}/best_model_id_{idData}"
         mlflow.register_model(model_uri, f"best_model_id_{idData}")
         mlflow.log_param("Mejor modelo", best_model_name)
-        
+
         print(f"✅ Entrenamiento completado para ID {idData}. Mejor modelo registrado en MLflow.")
